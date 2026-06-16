@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Explorer</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>BQ Pulse</h1>
+                    <p>BigQuery Release Notes</p>
+                </div>
+            </div>
+            
+            <div class="search-bar-container">
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Search updates, keywords, features..." autocomplete="off">
+                    <button id="clear-search" class="clear-search-btn" style="display: none;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="category-filters">
+                <p class="filter-label">Filter by type</p>
+                <div class="filter-buttons" id="filter-buttons">
+                    <button class="filter-btn active" data-category="all">
+                        <span class="dot all"></span> All Updates
+                    </button>
+                    <!-- JavaScript will dynamically add other category buttons with item counts -->
+                </div>
+            </nav>
+            
+            <div class="app-meta">
+                <div class="status-indicator">
+                    <span class="status-dot green"></span>
+                    <span id="cache-status">Feed parsed</span>
+                </div>
+                <button id="refresh-btn" class="refresh-btn">
+                    <svg id="refresh-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Controls (Mobile Search/Filters toggle, sort order etc) -->
+            <div class="content-header">
+                <div class="results-info">
+                    <span id="results-count">0</span> updates found
+                </div>
+                <div class="sort-wrapper">
+                    <label for="sort-select">Sort:</label>
+                    <select id="sort-select" class="sort-select">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Notes Grid / List -->
+            <div class="notes-container" id="notes-container">
+                <!-- Skeleton loader by default -->
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+        </main>
+
+        <!-- Right Share Panel -->
+        <aside class="share-panel" id="share-panel">
+            <div class="share-panel-header">
+                <h2>Tweet Composer</h2>
+                <button id="close-share" class="close-share-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="share-panel-body">
+                <div class="no-selection-message" id="no-selection-message">
+                    <div class="tweet-placeholder-icon">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                    </div>
+                    <h3>Share updates on X</h3>
+                    <p>Select any release note from the feed list, customize your message, and share it with your followers.</p>
+                </div>
+
+                <div class="composer-form" id="composer-form" style="display: none;">
+                    <div class="selected-note-preview">
+                        <div class="preview-header">
+                            <span class="preview-date" id="preview-date">June 15, 2026</span>
+                            <span class="tag" id="preview-tag">Feature</span>
+                        </div>
+                        <h4 id="preview-headline">Use Gemini Cloud Assist to optimize SQL query performance</h4>
+                    </div>
+
+                    <div class="tweet-textarea-wrapper">
+                        <label for="tweet-text">Compose Message</label>
+                        <textarea id="tweet-text" rows="8" placeholder="What's happening?"></textarea>
+                        
+                        <div class="textarea-actions">
+                            <button id="suggest-btn" class="suggest-btn" title="AI Suggest: Rephrase to be shorter and punchier">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                    <polyline points="2 17 12 22 22 17"></polyline>
+                                    <polyline points="2 12 12 17 22 12"></polyline>
+                                </svg>
+                                <span>Enhance Text</span>
+                            </button>
+                            
+                            <div class="char-count-wrapper">
+                                <svg class="progress-ring" width="24" height="24">
+                                    <circle class="progress-ring__bg" stroke="rgba(255,255,255,0.1)" stroke-width="2.5" fill="transparent" r="9" cx="12" cy="12"/>
+                                    <circle id="progress-ring-circle" class="progress-ring__circle" stroke="#1da1f2" stroke-width="2.5" fill="transparent" r="9" cx="12" cy="12"/>
+                                </svg>
+                                <span id="char-counter">280</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Card Preview of Tweet -->
+                    <div class="visual-tweet-card-preview">
+                        <div class="twitter-user-avatar">
+                            <div class="avatar-placeholder">BQ</div>
+                            <div class="user-meta">
+                                <span class="display-name">BigQuery Updates</span>
+                                <span class="username">@BigQueryPulse</span>
+                            </div>
+                        </div>
+                        <div class="tweet-content-preview" id="tweet-content-preview">
+                            Tweet text will be previewed here.
+                        </div>
+                        <div class="tweet-meta-tags">
+                            <span class="hashtag">#BigQuery</span>
+                            <span class="hashtag">#GoogleCloud</span>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button id="copy-tweet-btn" class="secondary-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Copy Text</span>
+                        </button>
+                        <button id="tweet-btn" class="primary-btn share-on-x-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                            <span>Post on X</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">
+        <span id="toast-message">Notification message</span>
+    </div>
+
+    <!-- JS scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
